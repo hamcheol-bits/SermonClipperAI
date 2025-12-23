@@ -1,0 +1,7 @@
+openai-whisper
+ollama
+chromadb
+moviepy
+torch
+numpy
+fastapi
