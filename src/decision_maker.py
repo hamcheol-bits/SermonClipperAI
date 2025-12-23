@@ -29,12 +29,18 @@ def find_cut_points(start_candidates, end_candidates):
         content = response['message']['content']
 
         # 정규표현식으로 JSON 추출
-        match = re.search(r'\{.*\}', content, re.DOTALL)
-        if match:
-            return json.loads(match.group(0))
+        code_block = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
+        if code_block:
+            json_str = code_block.group(1)
         else:
-            print(f"❌ JSON 파싱 실패. 원본 응답:\n{content}")
-            return None
+            match = re.search(r'\{.*\}', content, re.DOTALL)
+            if match:
+                json_str = match.group(0)
+            else:
+                print(f"❌ JSON 파싱 실패. 원본 응답:\n{content}")
+                return None
+
+        return json.loads(json_str)
 
     except Exception as e:
         print(f"❌ Ollama 통신/파싱 에러: {e}")
