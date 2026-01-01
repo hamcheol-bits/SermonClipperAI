@@ -5,3 +5,7 @@ moviepy
 torch
 numpy
 fastapi
+inaSpeechSegmenter
+pandas
+tensorflow-macos
+tensorflow-metal

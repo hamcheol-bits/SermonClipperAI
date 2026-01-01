@@ -33,3 +33,41 @@ def cut_video(input_path, output_dir, start_time, end_time):
         # print(e.stderr.decode())
 
     return output_path
+
+
+def extract_audio(input_path, output_dir):
+    """
+    영상 파일에서 분석용 오디오(WAV, 16kHz, Mono) 추출
+    """
+    filename = os.path.basename(input_path)
+    name, _ = os.path.splitext(filename)
+    audio_path = os.path.join(output_dir, f"{name}.wav")
+
+    # 이미 변환된 파일이 있으면 재사용
+    if os.path.exists(audio_path):
+        print(f"🔊 [Editor] Audio file already exists: {audio_path}")
+        return audio_path
+
+    print(f"🔊 [Editor] Extracting audio to {audio_path}...")
+
+    # ffmpeg 옵션 설명:
+    # -ac 1: Mono 채널 (분석 속도 향상)
+    # -ar 16000: 16kHz 샘플링 (음성 분석 표준)
+    # -vn: 비디오 제거
+    command = [
+        "ffmpeg", "-y",
+        "-i", input_path,
+        "-ac", "1",
+        "-ar", "16000",
+        "-vn",
+        audio_path
+    ]
+
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print(f"✅ Audio extraction complete.")
+    except subprocess.CalledProcessError as e:
+        print(f"❌ FFmpeg Audio Extraction Error: {e}")
+        return None
+
+    return audio_path
