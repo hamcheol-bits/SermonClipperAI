@@ -3,9 +3,9 @@ ollama
 chromadb
 moviepy
 torch
-numpy
+numpy<1.24
 fastapi
 inaSpeechSegmenter
 pandas
-tensorflow-macos
-tensorflow-metal
+tensorflow-macos==2.15.0
+tensorflow-metal==1.1.0
