@@ -1,47 +1,43 @@
 import ollama
-import json
-import re
 from .config import OLLAMA_MODEL
 
 
-def find_cut_points(start_candidates, end_candidates):
-    print("🧠 [Ollama] 검색된 문맥을 바탕으로 설교 구간 추론 중...")
-
-    start_context = json.dumps(start_candidates, ensure_ascii=False)
-    end_context = json.dumps(end_candidates, ensure_ascii=False)
-
+def classify_sequence(text_chunk):
+    """
+    텍스트 덩어리를 입력받아 [SONG, SERMON, PRAYER, OTHER] 중 하나로 분류
+    """
     prompt = f"""
-    You are a video editor. Find the start/end timestamps of the 'Sermon'.
+    Analyze the following transcript from a church service and classify it into one category.
 
-    1. Start hint: "오늘 말씀", "성경 본문".
-    2. End hint: "기도하겠습니다", "마치겠습시다".
+    Categories:
+    1. SONG: Lyrics of a hymn, choir singing, poetic expressions about praise.
+    2. SERMON: Preaching, explaining Bible verses, speaking to the congregation.
+    3. PRAYER: Speaking to God, supplication, ending with Amen.
+    4. OTHER: Announcements, noise, silence.
+    
+    Specific Order of service near the sermon:
+    1. SCRIPTURE: Reading Bible verses (Chapter/Verse mentions).
+    2. CHOIR: Singing, Hymns, Lyrics (often poetic, or Whisper marks like ♪).
+    3. SERMON: Preaching, Explaining scripture, Speaking to audience.
+    4. PRAYER: Speaking to God (Lord, Father), Ending with Amen.
 
-    Context Start: {start_context}
-    Context End: {end_context}
+    Transcript: "{text_chunk}"
 
-    OUTPUT JSON ONLY: {{"start": 120.5, "end": 2400.0}}
+    OUTPUT ONLY THE CATEGORY NAME (e.g., SONG, SERMON, PRAYER). DO NOT EXPLAIN.
     """
 
     try:
         response = ollama.chat(model=OLLAMA_MODEL, messages=[
             {'role': 'user', 'content': prompt},
         ])
-        content = response['message']['content']
+        category = response['message']['content'].strip().upper()
 
-        # 정규표현식으로 JSON 추출
-        code_block = re.search(r'```json\s*(\{.*?\})\s*```', content, re.DOTALL)
-        if code_block:
-            json_str = code_block.group(1)
-        else:
-            match = re.search(r'\{.*\}', content, re.DOTALL)
-            if match:
-                json_str = match.group(0)
-            else:
-                print(f"❌ JSON 파싱 실패. 원본 응답:\n{content}")
-                return None
-
-        return json.loads(json_str)
+        # 가끔 LLM이 잡담을 섞을 수 있으므로 정제
+        if "SONG" in category: return "SONG"
+        if "SERMON" in category: return "SERMON"
+        if "PRAYER" in category: return "PRAYER"
+        return "OTHER"
 
     except Exception as e:
-        print(f"❌ Ollama 통신/파싱 에러: {e}")
-        return None
+        print(f"❌ Ollama 분류 에러: {e}")
+        return "OTHER"
