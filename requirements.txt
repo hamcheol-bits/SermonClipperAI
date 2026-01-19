@@ -1,3 +1,4 @@
+#pip install -r requirements.txt
 openai-whisper
 ollama
 chromadb
@@ -9,3 +10,8 @@ inaSpeechSegmenter
 pandas
 tensorflow-macos==2.15.0
 tensorflow-metal==1.1.0
+yt-dlp
+google-api-python-client
+google-auth-oauthlib
+google-auth-httplib2
+python-dotenv

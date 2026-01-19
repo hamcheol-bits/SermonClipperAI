@@ -1,5 +1,6 @@
 # Environment
 .env
+.env.local
 
 # macOS
 .DS_Store
@@ -15,6 +16,17 @@ chroma/data/
 *.log
 *.mp4
 *.mp3
+
 # 프로젝트 제외 경로
 /.venv/
 venv
+
+# YouTube OAuth 인증 파일
+credentials.json
+token.pickle
+*.pickle
+
+# YouTube 다운로드 파일
+*_urls.txt
+sermon_*.txt
+playlist_*.txt
