@@ -1,8 +1,9 @@
 """
-YouTube 플레이리스트 자동 처리 워크플로우
+YouTube 플레이리스트 자동 처리 워크플로우 (최종 버전)
 1. 플레이리스트 동영상 목록 조회
 2. 각 동영상 다운로드 → 설교 구간 추출 → YouTube 업데이트
-3. 진행상황 표시
+3. 새 동영상을 원래 플레이리스트 위치에 다시 추가
+4. 진행상황 표시
 """
 
 import os
@@ -16,14 +17,17 @@ from src.analyzer import SermonVideoProcessor
 from src.analyzer.config import INPUT_DIR, OUTPUT_DIR, BASE_DIR
 
 
-def process_single_video(video_info, download_service, update_service, thumbnail_path):
+def process_single_video(video_info, playlist_id, download_service, update_service,
+                         playlist_service, thumbnail_path):
     """
-    단일 동영상 처리 파이프라인
+    단일 동영상 처리 파이프라인 (플레이리스트 관리 포함)
 
     Args:
-        video_info (dict): 동영상 정보 (video_id, url, title 등)
+        video_info (dict): 동영상 정보
+        playlist_id (str): 플레이리스트 ID
         download_service: YouTube 다운로드 서비스
         update_service: YouTube 업데이트 서비스
+        playlist_service: YouTube 플레이리스트 서비스
         thumbnail_path (str): 섬네일 이미지 경로
 
     Returns:
@@ -32,17 +36,19 @@ def process_single_video(video_info, download_service, update_service, thumbnail
     video_id = video_info['video_id']
     video_url = video_info['url']
     video_title = video_info['title']
+    video_position = video_info.get('position', 0)
 
     print(f"\n{'=' * 80}")
     print(f"🎬 처리 중: {video_title}")
     print(f"   URL: {video_url}")
+    print(f"   플레이리스트 위치: {video_position}")
     print(f"{'=' * 80}\n")
 
     try:
         # ==========================================
         # 1. 동영상 다운로드
         # ==========================================
-        print("📥 [Step 1/3] 동영상 다운로드 중...")
+        print("📥 [Step 1/4] 동영상 다운로드 중...")
         downloaded_path = download_service.download_video(video_url, video_id)
 
         if not downloaded_path or not os.path.exists(downloaded_path):
@@ -50,9 +56,9 @@ def process_single_video(video_info, download_service, update_service, thumbnail
             return False
 
         # ==========================================
-        # 2. 설교 구간 추출 (SermonVideoProcessor 사용)
+        # 2. 설교 구간 추출
         # ==========================================
-        print("\n🔍 [Step 2/3] 설교 구간 추출 중...")
+        print("\n🔍 [Step 2/4] 설교 구간 추출 중...")
         processor = SermonVideoProcessor()
         output_path = processor.extract_sermon_segment(downloaded_path, OUTPUT_DIR)
 
@@ -71,7 +77,7 @@ def process_single_video(video_info, download_service, update_service, thumbnail
         # ==========================================
         # 3. YouTube 업데이트 (삭제 후 재업로드)
         # ==========================================
-        print("\n📤 [Step 3/3] YouTube 업데이트 중...")
+        print("\n📤 [Step 3/4] YouTube 업데이트 중...")
         print("⚠️  기존 동영상을 삭제하고 새 동영상을 업로드합니다...")
 
         result = update_service.delete_and_reupload(
@@ -81,15 +87,35 @@ def process_single_video(video_info, download_service, update_service, thumbnail
         )
 
         if result:
+            new_video_id = result['id']
             print(f"✅ YouTube 업데이트 완료!")
-            print(f"   새 동영상 ID: {result['id']}")
+            print(f"   새 동영상 ID: {new_video_id}")
+
+            # ==========================================
+            # 4. 플레이리스트에 새 동영상 추가
+            # ==========================================
+            print(f"\n📋 [Step 4/4] 플레이리스트에 추가 중...")
+
+            add_result = playlist_service.add_video_to_playlist(
+                playlist_id=playlist_id,
+                video_id=new_video_id,
+                position=video_position  # 원래 위치에 추가
+            )
+
+            if add_result:
+                print(f"✅ 플레이리스트 추가 완료!")
+                print(f"   위치: {video_position}")
+            else:
+                print("⚠️  플레이리스트 추가 실패 (동영상은 업로드됨)")
+                print(f"   수동으로 추가 필요: {new_video_id}")
+
         else:
             print("❌ YouTube 업데이트 실패")
             cleanup_files(downloaded_path, output_path)
             return False
 
         # ==========================================
-        # 4. 파일 정리
+        # 5. 파일 정리
         # ==========================================
         print("\n🗑️  임시 파일 삭제 중...")
         cleanup_files(downloaded_path, output_path)
@@ -105,12 +131,7 @@ def process_single_video(video_info, download_service, update_service, thumbnail
 
 
 def cleanup_files(*file_paths):
-    """
-    임시 파일들 삭제
-
-    Args:
-        *file_paths: 삭제할 파일 경로들
-    """
+    """임시 파일들 삭제"""
     for file_path in file_paths:
         if file_path and os.path.exists(file_path):
             try:
@@ -121,11 +142,10 @@ def cleanup_files(*file_paths):
 
 
 def main():
-    """
-    메인 워크플로우: 플레이리스트 전체 처리
-    """
+    """메인 워크플로우: 플레이리스트 전체 처리"""
     print("\n" + "=" * 80)
     print("🚀 SermonClipperAI - YouTube Playlist Automation")
+    print("   (플레이리스트 자동 관리 포함)")
     print("=" * 80 + "\n")
 
     # ==========================================
@@ -171,6 +191,18 @@ def main():
     total_videos = len(videos)
     print(f"\n📊 총 {total_videos}개의 동영상을 처리합니다.\n")
 
+    # 주의사항 표시
+    print("⚠️  주의사항:")
+    print("   1. 기존 동영상이 삭제되고 새 동영상으로 교체됩니다.")
+    print("   2. 동영상 ID, URL, 조회수, 댓글이 초기화됩니다.")
+    print("   3. 새 동영상은 원래 플레이리스트 위치에 자동 추가됩니다.")
+    print("   4. 공개 상태는 원본과 동일하게 설정됩니다.\n")
+
+    confirm = input("계속 진행하시겠습니까? (y/n): ").lower()
+    if confirm != 'y':
+        print("취소되었습니다.")
+        return
+
     # ==========================================
     # 3. 각 동영상 처리
     # ==========================================
@@ -185,8 +217,10 @@ def main():
 
         success = process_single_video(
             video_info=video,
+            playlist_id=PLAYLIST_ID,
             download_service=download_service,
             update_service=update_service,
+            playlist_service=playlist_service,
             thumbnail_path=THUMBNAIL_PATH
         )
 
@@ -208,6 +242,10 @@ def main():
     print(f"✅ 성공: {success_count}개")
     print(f"❌ 실패: {fail_count}개")
     print(f"📊 전체: {total_videos}개")
+
+    if success_count > 0:
+        print(f"\n📋 플레이리스트 확인: https://www.youtube.com/playlist?list={PLAYLIST_ID}")
+
     print("=" * 80 + "\n")
 
 

@@ -1,5 +1,5 @@
 """
-YouTube 플레이리스트 관리 서비스
+YouTube 플레이리스트 관리 서비스 (동영상 추가/제거 기능 포함)
 """
 
 from googleapiclient.errors import HttpError
@@ -109,7 +109,8 @@ class YouTubePlaylistService:
                         'published_at': item['snippet']['publishedAt'],
                         'position': item['snippet']['position'],
                         'privacy_status': privacy_status,
-                        'thumbnail': item['snippet']['thumbnails'].get('default', {}).get('url', '')
+                        'thumbnail': item['snippet']['thumbnails'].get('default', {}).get('url', ''),
+                        'playlist_item_id': item['id']  # 플레이리스트에서 제거할 때 필요
                     }
                     videos.append(video_info)
 
@@ -128,6 +129,137 @@ class YouTubePlaylistService:
         except Exception as e:
             print(f"❌ 영상 목록 가져오기 실패: {e}")
             return []
+
+    def add_video_to_playlist(self, playlist_id, video_id, position=None):
+        """
+        플레이리스트에 동영상 추가
+
+        Args:
+            playlist_id (str): 플레이리스트 ID
+            video_id (str): 추가할 동영상 ID
+            position (int): 삽입 위치 (None이면 맨 끝에 추가)
+
+        Returns:
+            dict: 추가된 항목 정보 (실패 시 None)
+        """
+        try:
+            print(f"➕ 플레이리스트에 동영상 추가 중...")
+            print(f"   플레이리스트 ID: {playlist_id}")
+            print(f"   동영상 ID: {video_id}")
+
+            body = {
+                'snippet': {
+                    'playlistId': playlist_id,
+                    'resourceId': {
+                        'kind': 'youtube#video',
+                        'videoId': video_id
+                    }
+                }
+            }
+
+            # 특정 위치에 삽입
+            if position is not None:
+                body['snippet']['position'] = position
+
+            request = self.youtube.playlistItems().insert(
+                part='snippet',
+                body=body
+            )
+
+            response = request.execute()
+
+            print(f"✅ 플레이리스트에 추가 완료!")
+            if position is not None:
+                print(f"   위치: {position}")
+
+            return response
+
+        except HttpError as e:
+            print(f"❌ API 오류: {e}")
+            return None
+        except Exception as e:
+            print(f"❌ 플레이리스트 추가 실패: {e}")
+            return None
+
+    def remove_video_from_playlist(self, playlist_item_id):
+        """
+        플레이리스트에서 동영상 제거
+
+        Args:
+            playlist_item_id (str): 플레이리스트 항목 ID (playlistItems의 id)
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            print(f"➖ 플레이리스트에서 동영상 제거 중...")
+            print(f"   항목 ID: {playlist_item_id}")
+
+            self.youtube.playlistItems().delete(
+                id=playlist_item_id
+            ).execute()
+
+            print(f"✅ 플레이리스트에서 제거 완료!")
+            return True
+
+        except HttpError as e:
+            print(f"❌ API 오류: {e}")
+            return False
+        except Exception as e:
+            print(f"❌ 플레이리스트 제거 실패: {e}")
+            return False
+
+    def replace_video_in_playlist(self, playlist_id, old_video_info, new_video_id):
+        """
+        플레이리스트에서 기존 동영상을 새 동영상으로 교체
+        (같은 위치에 새 동영상 삽입)
+
+        Args:
+            playlist_id (str): 플레이리스트 ID
+            old_video_info (dict): 기존 동영상 정보 (position, playlist_item_id 포함)
+            new_video_id (str): 새 동영상 ID
+
+        Returns:
+            bool: 성공 여부
+        """
+        try:
+            old_position = old_video_info.get('position', 0)
+            playlist_item_id = old_video_info.get('playlist_item_id')
+
+            if not playlist_item_id:
+                print("❌ 플레이리스트 항목 ID가 없습니다.")
+                return False
+
+            print(f"\n🔄 플레이리스트에서 동영상 교체 중...")
+            print(f"   기존 동영상 위치: {old_position}")
+
+            # 1. 새 동영상을 같은 위치에 추가
+            add_result = self.add_video_to_playlist(
+                playlist_id=playlist_id,
+                video_id=new_video_id,
+                position=old_position
+            )
+
+            if not add_result:
+                print("❌ 새 동영상 추가 실패")
+                return False
+
+            # 2. 기존 동영상 제거 (새 동영상이 추가되면서 위치가 밀렸으므로)
+            remove_result = self.remove_video_from_playlist(playlist_item_id)
+
+            if not remove_result:
+                print("⚠️ 기존 동영상 제거 실패 (새 동영상은 추가됨)")
+                return False
+
+            print(f"✅ 플레이리스트 교체 완료!")
+            print(f"   새 동영상 ID: {new_video_id}")
+            print(f"   위치: {old_position}")
+
+            return True
+
+        except Exception as e:
+            print(f"❌ 플레이리스트 교체 실패: {e}")
+            return False
 
     def print_playlists(self, playlists=None):
         """
