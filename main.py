@@ -1,10 +1,10 @@
 import os
 import datetime
-from src.transcriber import transcribe_video
-from src.audio_analyzer import analyze_audio_structure, find_sermon_candidates_by_audio  # <-- 신규 로직
-from src.decision_maker import classify_sequence
-from src.editor import cut_video, extract_audio
-from src.config import INPUT_DIR, OUTPUT_DIR
+from src.analyzer.transcriber import transcribe_video
+from src.analyzer.audio_analyzer import analyze_audio_structure, find_sermon_candidates_by_audio  # <-- 신규 로직
+from src.analyzer.decision_maker import classify_sequence
+from src.analyzer.editor import cut_video, extract_audio
+from src.analyzer.config import INPUT_DIR, OUTPUT_DIR
 
 
 def seconds_to_hms(seconds):
