@@ -72,7 +72,7 @@ def find_exact_boundary(segments, rough_time, direction='start'):
 
 
 def main():
-    video_file = "1121.mp4"  # 처리할 파일명 (필요시 변경)
+    video_file = "성가교회 2026년 1월 14일 수요예배.mp4"  # 처리할 파일명 (필요시 변경)
     input_path = os.path.join(INPUT_DIR, video_file)
 
     if not os.path.exists(input_path):
