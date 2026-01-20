@@ -12,5 +12,5 @@ __all__ = [
     'YouTubeAuthService',
     'YouTubePlaylistService',
     'YouTubeDownloadService',
-    'YouTubeUpdateService'
+    'YouTubeUpdateService',
 ]

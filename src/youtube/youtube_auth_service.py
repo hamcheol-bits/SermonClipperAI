@@ -1,5 +1,5 @@
 """
-YouTube OAuth 2.0 인증 서비스 (업로드 권한 포함)
+YouTube OAuth 2.0 인증 서비스 (전체 권한 포함)
 """
 
 import os
@@ -19,12 +19,9 @@ class YouTubeAuthService:
     """
 
     # YouTube Data API 권한
-    # readonly: 플레이리스트 조회
-    # upload: 동영상 업로드, 수정, 삭제
-    # force-ssl: HTTPS를 통한 모든 YouTube 데이터 접근
+    # 주의: force-ssl은 모든 YouTube 데이터에 대한 전체 권한을 부여합니다
+    # 이 권한으로 동영상 조회, 업로드, 수정, 삭제가 모두 가능합니다
     SCOPES = [
-        'https://www.googleapis.com/auth/youtube.readonly',
-        'https://www.googleapis.com/auth/youtube.upload',
         'https://www.googleapis.com/auth/youtube.force-ssl'
     ]
 
@@ -91,7 +88,11 @@ class YouTubeAuthService:
                 print("\n🔐 OAuth 2.0 인증이 필요합니다.")
                 print("   브라우저가 자동으로 열립니다.")
                 print("   Google 계정으로 로그인하고 권한을 승인해주세요.")
-                print("   ⚠️  권한 범위: YouTube 데이터 읽기, 동영상 업로드/수정/삭제\n")
+                print("\n⚠️  권한 범위:")
+                print("   - YouTube 데이터 읽기/쓰기")
+                print("   - 동영상 업로드/수정/삭제")
+                print("   - 플레이리스트 관리")
+                print("   - 공개 상태 변경\n")
 
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.credentials_file, self.SCOPES)

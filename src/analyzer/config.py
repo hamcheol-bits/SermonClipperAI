@@ -9,6 +9,6 @@ CHROMA_PORT = 8001  # 사용자의 포트 8101 반영
 COLLECTION_NAME = "sermon_transcripts"
 
 # 경로 설정
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 INPUT_DIR = os.path.join(BASE_DIR, 'data', 'input')
 OUTPUT_DIR = os.path.join(BASE_DIR, 'data', 'output')
